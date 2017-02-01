@@ -258,7 +258,7 @@ DumpRecords(char *lookup, int type, DNSRecord *records, int rec_count) {
 
 			case RR_CAA: {
 				printf(" CAA\n");
-				printf("  Flags: %u\n", records[i].CAA.flags);
+				printf("  Flags: %s\n", (records[i].CAA.flags & 0x1) ? "critical" : "none");
 				printf("  %s: %s\n", records[i].CAA.tag, records[i].CAA.value);
 				break;
 			}
