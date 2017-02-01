@@ -369,10 +369,33 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 
 			recinfo->type = ntohs(recinfo->type);
 			switch(recinfo->type) {
+				case RR_A:
+					answers[i].type = RR_A;
+					adata = (struct AData*)(answer + answeroff);
+					answers[i].A.addr.s_addr = adata->address;
+					answeroff += ADATASIZE;
+#if DEBUG_RESOLVER
+					ConsolePrintf("A Record\n");
+					ConsolePrintf("Address   : %s\n", inet_ntoa(answers[i].A.addr));
+#endif
+					break;
+
+				case RR_AAAA:
+					answers[i].type = RR_AAAA;
+					memcpy(&(answers[i].AAAA.addr), answer + answeroff, sizeof(struct in6_addr));
+					answeroff += sizeof(struct in6_addr);
+#if DEBUG_RESOLVER
+					char buf[46];
+					ConsolePrintf("AAAA Record\n");
+					inet_ntop(AF_INET6, &answers[i].AAAA.addr, buf, 46);
+					ConsolePrintf("Address   : %s\n", buf);
+#endif
+					break;
+
 				case RR_MX:
+					answers[i].type = RR_MX;
 					mxdata = (struct MXData*)(answer + answeroff);
 					answers[i].MX.preference = ntohs(mxdata->preference);
-					answers[i].type = RR_MX;
 					answeroff += MXDATASIZE;
 					answeroff += DecodeName(answer, answeroff, answers[i].MX.name);
 					answers[i].MX.addr.s_addr = 0;
@@ -384,28 +407,17 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 #endif
 					break;
 				
-				case RR_A:
-					adata = (struct AData*)(answer + answeroff);
-					answers[i].A.addr.s_addr = adata->address;
-					answers[i].type = RR_A;
-					answeroff += ADATASIZE;
-#if DEBUG_RESOLVER
-					ConsolePrintf("A Record\n");
-					ConsolePrintf("Address   : %s\n", inet_ntoa(answers[i].A.addr));
-#endif
-					break;
-
 				case RR_NS:
-					answeroff += DecodeName(answer, answeroff, answers[i].NS.nsdname);
 					answers[i].type = RR_NS;
+					answeroff += DecodeName(answer, answeroff, answers[i].NS.nsdname);
 #if DEBUG_RESOLVER
 					ConsolePrintf("NS   : %s\n", inet_ntoa(answers[i].NS.nsdname));
 #endif
 					break;
 				
 				case RR_TXT:
-					answers[i].TXT.len = *(answer+answeroff);
 					answers[i].type = RR_TXT;
+					answers[i].TXT.len = *(answer+answeroff);
 					answeroff += sizeof(unsigned char);
 					memcpy(answers[i].TXT.data, answer+answeroff, answers[i].TXT.len);
 					answers[i].TXT.data[answers[i].TXT.len]='\0';

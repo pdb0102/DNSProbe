@@ -33,6 +33,12 @@ typedef struct ARecord {
 	struct in_addr	addr;							/* The address of hostname		 */	
 } ARecord;
 
+typedef struct AAAARecord {
+	unsigned int	type;
+	char			name[MAXDNSNAMELENGTH + 1];		/* The hostname */
+	struct in6_addr	addr;							/* The address of hostname		 */	
+} AAAARecord;
+
 typedef struct NSRecord {
 	unsigned int	type;
 	char			nsdname[MAXDNSNAMELENGTH + 1];	/* The hostname */
@@ -70,13 +76,14 @@ typedef struct TLSARecord {
 
 typedef union DNSRecord {
 	unsigned int	type;
-	ARecord		A;
-	NSRecord	NS;
-	MXRecord	MX;
-	PTRRecord	PTR;
-	SOARecord	SOA;
-	TXTRecord	TXT;
-	TLSARecord	TLSA;
+	ARecord			A;
+	AAAARecord		AAAA;
+	NSRecord		NS;
+	MXRecord		MX;
+	PTRRecord		PTR;
+	SOARecord		SOA;
+	TXTRecord		TXT;
+	TLSARecord		TLSA;
 } DNSRecord;
 #pragma pack (pop)
 

@@ -27,7 +27,11 @@
 
 #define CallingFunction(FirstArg)       (*((unsigned long *)(&FirstArg)-1))
 
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#define WIN32_LEAN_AND_MEAN
+
 #if defined(WIN32)
+#include <Ws2tcpip.h>
 #include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>

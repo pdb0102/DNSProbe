@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 
 	IPInit();
 
-	lookup_type = RR_A;
+	lookup_type = RR_AAAA;
 	resolvers = malloc(sizeof(char *) * 2);
 	resolvers[0] = "8.8.8.8";
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
 	if (argc > 1) {
 		lookupname = argv[1];
 	} else {
-		lookupname = "venafi.com";
+		lookupname = "google.com";
 	}
 	if (inet_addr(lookupname) != INADDR_NONE) {
 		lookup_type = RR_PTR;
@@ -62,9 +62,21 @@ Lookup(char *value, int lookup_type) {
 		case DNS_SUCCESS: {
 			switch (lookup_type) {
 				case RR_A: {
-					printf("Address Record%s\n", rec_count > 1 ? "s" : "");
+					printf("IPv4 Address Record%s\n", rec_count > 1 ? "s" : "");
 					for (int i = 0; i < rec_count; i++) {
 						printf("  %s: %s\n", records[i].A.name, inet_ntoa(records[i].A.addr));
+					}
+					detail_name = records[0].A.name;
+					break;
+				}
+
+				case RR_AAAA: {
+					char buf[46];
+
+					printf("IPv6 Address Record%s\n", rec_count > 1 ? "s" : "");
+					for (int i = 0; i < rec_count; i++) {
+						inet_ntop(AF_INET6, &records[i].AAAA.addr, buf, 46);
+						printf("  %s: %s\n", records[i].AAAA.name, buf);
 					}
 					detail_name = records[0].A.name;
 					break;
