@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 	if (argc > 1) {
 		lookupname = argv[1];
 	} else {
-		lookupname = "venafi.com";
+		lookupname = "google.com";
 	}
 	if (inet_addr(lookupname) != INADDR_NONE) {
 		lookup_type = RR_PTR;
@@ -174,6 +174,13 @@ Lookup(char *value, int lookup_type) {
 		printf("No Text (TXT) Records\n");
 	}
 
+	status = DNSResolve(detail_name, &records, RR_CAA, &rec_count, authority);
+	if (status == DNS_SUCCESS) {
+		DumpRecords(detail_name, RR_CAA, records, rec_count);
+	} else {
+		printf("No CAA Records\n");
+	}
+
 	return TRUE;
 }
 
@@ -246,6 +253,13 @@ DumpRecords(char *lookup, int type, DNSRecord *records, int rec_count) {
 			case RR_CNAME: {
 				printf(" Canonical Name\n");
 				printf("  NS Name: %s\n", records[i].NS.nsdname);
+				break;
+			}
+
+			case RR_CAA: {
+				printf(" CAA\n");
+				printf("  Flags: %u\n", records[i].CAA.flags);
+				printf("  %s: %s\n", records[i].CAA.tag, records[i].CAA.value);
 				break;
 			}
 		}

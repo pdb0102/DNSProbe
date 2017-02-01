@@ -339,12 +339,12 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 			if (ntohs(answerH->nscount) == 0) {
 				return(DNS_NORECORDS);
 			}
-			numanswers += ntohs(answerH->nscount);
 		}
+		numanswers += ntohs(answerH->nscount);
 
 		/* The extra record is for a "NULL" termination record */
-		answers = malloc(sizeof(DNSRecord) * (numanswers + 1));
-		if(answers == NULL) {
+		answers = calloc((numanswers + 1), sizeof(DNSRecord));
+		if (answers == NULL) {
 			ret_value = DNS_FAIL;
 			goto cleanup;
 		}
@@ -454,6 +454,35 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					answers[i].type = RR_PTR;
 #if DEBUG_RESOLVER
 					ConsolePrintf("Got PTR, name:%s\n", answers[i].PTR.name);
+#endif
+					break;
+				}
+
+				case RR_CAA: {
+					unsigned char n;
+					unsigned char m;
+					char *ptr;
+					int d;
+
+					d = ntohs(recinfo->datalength);
+					answers[i].type = RR_CAA;
+					answers[i].CAA.flags = *(answer + answeroff);
+					answeroff += sizeof(unsigned char);
+
+					n = *(answer + answeroff);
+					answeroff += sizeof(unsigned char);
+
+					memcpy(answers[i].CAA.tag, answer + answeroff, n);
+					answers[i].CAA.tag[n] = '\0';
+					answeroff += n;
+
+					m = d - n - 2;
+					memcpy(&answers[i].CAA.value, answer + answeroff, m);
+					answers[i].CAA.value[m] = '\0';
+					answeroff += m;
+					
+#if DEBUG_RESOLVER
+					ConsolePrintf("Got CAA, %s:%s\n", answers[i].CAA.tag, answers[i].CAA.value);
 #endif
 					break;
 				}

@@ -39,6 +39,13 @@ typedef struct AAAARecord {
 	struct in6_addr	addr;							/* The address of hostname		 */	
 } AAAARecord;
 
+typedef struct CAARecord {
+	unsigned int	type;
+	unsigned char	flags;
+	char			tag[MAXDNSNAMELENGTH + 1];		/* The tag */
+	char			value[MAXDNSNAMELENGTH + 1];	/* The value for the tag */
+} CAARecord;
+
 typedef struct CNAMERecord {
 	unsigned int	type;
 	char			name[MAXDNSNAMELENGTH + 1];		/* The hostname */
@@ -83,6 +90,7 @@ typedef union DNSRecord {
 	unsigned int	type;
 	ARecord			A;
 	AAAARecord		AAAA;
+	CAARecord		CAA;
 	CNAMERecord		CNAME;
 	NSRecord		NS;
 	MXRecord		MX;
