@@ -189,6 +189,20 @@ Lookup(char *value, int lookup_type) {
 		printf("No SRV Records\n");
 	}
 
+	status = DNSResolve(detail_name, &records, RR_DS, &rec_count, authority);
+	if (status == DNS_SUCCESS) {
+		DumpRecords(detail_name, RR_DS, records, rec_count);
+	} else {
+		printf("No DS Records\n");
+	}
+
+	status = DNSResolve(detail_name, &records, RR_TA, &rec_count, authority);
+	if (status == DNS_SUCCESS) {
+		DumpRecords(detail_name, RR_TA, records, rec_count);
+	} else {
+		printf("No TA Records\n");
+	}
+
 	return TRUE;
 }
 
@@ -277,6 +291,32 @@ DumpRecords(char *lookup, int type, DNSRecord *records, int rec_count) {
 				printf("  Weight  : %u\n", records[i].SRV.weight);
 				printf("  Port    : %u\n", records[i].SRV.port);
 				printf("  Target  : %s\n", records[i].SRV.target);
+				break;
+			}
+
+			case RR_DS: {
+				printf(" Delegation Signer (DS)\n");
+				printf("  Key Tag    : %u\n", records[i].DS.key_tag);
+				printf("  Algorithm  : %u\n", records[i].DS.algorithm);
+				printf("  Digest Type: %u\n", records[i].DS.digest_type);
+				printf("  Digest     : ");
+				for (int j = 0; j < records[i].DS.digest_length; j++) {
+					printf("0x%x", records[i].DS.digest[j]);
+				}
+				printf("\n");
+				break;
+			}
+
+			case RR_TA: {
+				printf(" Trust Authority (DS)\n");
+				printf("  Key Tag    : %u\n", records[i].DS.key_tag);
+				printf("  Algorithm  : %u\n", records[i].DS.algorithm);
+				printf("  Digest Type: %u\n", records[i].DS.digest_type);
+				printf("  Digest     : ");
+				for (int j = 0; j < records[i].DS.digest_length; j++) {
+					printf("0x%x", records[i].DS.digest[j]);
+				}
+				printf("\n");
 				break;
 			}
 		}

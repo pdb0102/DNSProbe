@@ -51,6 +51,15 @@ typedef struct CNAMERecord {
 	char			name[MAXDNSNAMELENGTH + 1];		/* The hostname */
 } CNAMERecord;
 
+typedef struct DSRecord {
+	unsigned int	type;
+	unsigned short	key_tag;
+	unsigned char	algorithm;
+	unsigned char	digest_type;
+	unsigned char	digest[MAXDNSNAMELENGTH + 1];
+	unsigned short	digest_length;
+} DSRecord, TARecord;
+
 typedef struct NSRecord {
 	unsigned int	type;
 	char			nsdname[MAXDNSNAMELENGTH + 1];	/* The hostname */
@@ -100,11 +109,13 @@ typedef union DNSRecord {
 	AAAARecord		AAAA;
 	CAARecord		CAA;
 	CNAMERecord		CNAME;
+	DSRecord		DS;
 	NSRecord		NS;
 	MXRecord		MX;
 	PTRRecord		PTR;
 	SOARecord		SOA;
 	SRVRecord		SRV;
+	TARecord		TA;
 	TXTRecord		TXT;
 	TLSARecord		TLSA;
 } DNSRecord;

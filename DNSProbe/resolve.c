@@ -374,22 +374,12 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					adata = (struct AData*)(answer + answeroff);
 					answers[i].A.addr.s_addr = adata->address;
 					answeroff += ADATASIZE;
-#if DEBUG_RESOLVER
-					ConsolePrintf("A Record\n");
-					ConsolePrintf("Address   : %s\n", inet_ntoa(answers[i].A.addr));
-#endif
 					break;
 
 				case RR_AAAA:
 					answers[i].type = RR_AAAA;
 					memcpy(&(answers[i].AAAA.addr), answer + answeroff, sizeof(struct in6_addr));
 					answeroff += sizeof(struct in6_addr);
-#if DEBUG_RESOLVER
-					char buf[46];
-					ConsolePrintf("AAAA Record\n");
-					inet_ntop(AF_INET6, &answers[i].AAAA.addr, buf, 46);
-					ConsolePrintf("Address   : %s\n", buf);
-#endif
 					break;
 
 				case RR_MX:
@@ -399,20 +389,11 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					answeroff += MXDATASIZE;
 					answeroff += DecodeName(answer, answeroff, answers[i].MX.name);
 					answers[i].MX.addr.s_addr = 0;
-
-#if DEBUG_RESOLVER
-					ConsolePrintf("MX Record\n");
-					ConsolePrintf("Preference: %d\n", ntohs(answers[i].MX.preference));
-					ConsolePrintf("Name      : %s\n", answers[i].MX.name);
-#endif
 					break;
 				
 				case RR_NS:
 					answers[i].type = RR_NS;
 					answeroff += DecodeName(answer, answeroff, answers[i].NS.nsdname);
-#if DEBUG_RESOLVER
-					ConsolePrintf("NS   : %s\n", inet_ntoa(answers[i].NS.nsdname));
-#endif
 					break;
 				
 				case RR_TXT:
@@ -422,11 +403,6 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					memcpy(answers[i].TXT.data, answer+answeroff, answers[i].TXT.len);
 					answers[i].TXT.data[answers[i].TXT.len]='\0';
 					answeroff += answers[i].TXT.len;
-#if DEBUG_RESOLVER
-					ConsolePrintf("TXT Record\n");
-					ConsolePrintf("Length   : %d\n", Answers[i].TXT.len);
-					ConsolePrintf("Value    : %s\n", Answers[i].TXT.data);
-#endif
 					break;
 
 				case RR_CNAME:
@@ -452,16 +428,12 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 				case RR_PTR: {
 					answeroff += DecodeName(answer, answeroff, answers[i].PTR.name);
 					answers[i].type = RR_PTR;
-#if DEBUG_RESOLVER
-					ConsolePrintf("Got PTR, name:%s\n", answers[i].PTR.name);
-#endif
 					break;
 				}
 
 				case RR_CAA: {
 					unsigned char n;
 					unsigned char m;
-					char *ptr;
 					int d;
 
 					d = ntohs(recinfo->datalength);
@@ -480,10 +452,6 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					memcpy(&answers[i].CAA.value, answer + answeroff, m);
 					answers[i].CAA.value[m] = '\0';
 					answeroff += m;
-					
-#if DEBUG_RESOLVER
-					ConsolePrintf("Got CAA, %s:%s\n", answers[i].CAA.tag, answers[i].CAA.value);
-#endif
 					break;
 				}
 
@@ -503,6 +471,37 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					break;
 				}
 
+				case RR_TA:
+				case RR_DS: {
+					int d;
+					int alg_len;
+					
+					answers[i].type = recinfo->type;
+					answers[i].DS.key_tag = ntohs(answer[answeroff] | answer[answeroff + 1] << 8);
+					answeroff += 2;
+
+					answers[i].DS.algorithm = answer[answeroff];
+					answeroff ++;
+
+					answers[i].DS.digest_type= *answer;
+					answeroff ++;
+
+					d = ntohs(recinfo->datalength);	// Our maximum length we can read
+					switch (answers[i].DS.algorithm) {
+						default: 
+						case 1: alg_len = 20; break;	// Algorithm 1 = SHA1
+					}
+					if ((d - 4 - alg_len) < 0) {
+						alg_len = d - 4;
+					}
+
+					for (int x = 0; x < alg_len; x++) {
+						answers[i].DS.digest[x] = answer[answeroff++];
+					}
+					answers[i].DS.digest_length = alg_len;
+					break;
+				}
+
 				case RR_TLSA:
 					answers[i].type = RR_TLSA;
 					answers[i].TLSA.usage = *(answer+answeroff);
@@ -512,10 +511,6 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					answers[i].TLSA.matching_type = *(answer+answeroff);
 					answeroff += sizeof(unsigned char);
 					answeroff += DecodeName(answer, answeroff, answers[i].TLSA.cert_assoc_data);
-#if DEBUG_RESOLVER
-					ConsolePrintf("TLSA Record\n");
-					ConsolePrintf("Value    : %s\n", Answers[i].TLSA.cert_assoc_data);
-#endif
 					break;
 
 				case RR_SOA: {
@@ -549,17 +544,6 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					if (ptr[0]=='.') {
 						ptr[0]='@';
 					}
-
-#if DEBUG_RESOLVER
-					ConsolePrintf("SOA Record\n");
-					ConsolePrintf("MName     : %s\n", answers[i].SOA.mname);
-					ConsolePrintf("RName     : %s\n", answers[i].SOA.rname);
-					ConsolePrintf("Serial    : %lu\n", answers[i].SOA.serial);
-					ConsolePrintf("Refresh   : %lu\n", answers[i].SOA.refresh);
-					ConsolePrintf("Retry     : %lu\n", answers[i].SOA.retry);
-					ConsolePrintf("Expire    : %lu\n", answers[i].SOA.expire);
-					ConsolePrintf("Minimum   : %lu\n", answers[i].SOA.minimum);
-#endif
 					break;
 				}
 
