@@ -19,14 +19,15 @@ int main(int argc, char* argv[]) {
 	IPInit();
 
 	lookup_type = RR_A;
-	resolvers = malloc(sizeof(char *) * 2);
-	resolvers[0] = "8.8.8.8";
+	resolvers = malloc(sizeof(char *) * 3);
+	resolvers[0] = "10.1.10.6";
+	resolvers[1] = "8.8.8.8";
 
-	InitResolver(resolvers, 1);
+	InitResolver(resolvers, 2);
 	if (argc > 1) {
 		lookupname = argv[1];
 	} else {
-		lookupname = "google.com";
+		lookupname = "example.com";
 	}
 	if (inet_addr(lookupname) != INADDR_NONE) {
 		lookup_type = RR_PTR;
@@ -181,6 +182,13 @@ Lookup(char *value, int lookup_type) {
 		printf("No CAA Records\n");
 	}
 
+	status = DNSResolve("_ldap._tcp.venafiad.venafi.com", &records, RR_SRV, &rec_count, 0);
+	if (status == DNS_SUCCESS) {
+		DumpRecords("_ldap._tcp.venafiad.venafi.com", RR_SRV, records, rec_count);
+	} else {
+		printf("No SRV Records\n");
+	}
+
 	return TRUE;
 }
 
@@ -260,6 +268,15 @@ DumpRecords(char *lookup, int type, DNSRecord *records, int rec_count) {
 				printf(" CAA\n");
 				printf("  Flags: %s\n", (records[i].CAA.flags & 0x1) ? "critical" : "none");
 				printf("  %s: %s\n", records[i].CAA.tag, records[i].CAA.value);
+				break;
+			}
+
+			case RR_SRV: {
+				printf(" Service\n");
+				printf("  Priority: %u\n", records[i].SRV.priority);
+				printf("  Weight  : %u\n", records[i].SRV.weight);
+				printf("  Port    : %u\n", records[i].SRV.port);
+				printf("  Target  : %s\n", records[i].SRV.target);
 				break;
 			}
 		}

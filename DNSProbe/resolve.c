@@ -339,8 +339,8 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 			if (ntohs(answerH->nscount) == 0) {
 				return(DNS_NORECORDS);
 			}
+			numanswers += ntohs(answerH->nscount);
 		}
-		numanswers += ntohs(answerH->nscount);
 
 		/* The extra record is for a "NULL" termination record */
 		answers = calloc((numanswers + 1), sizeof(DNSRecord));
@@ -484,6 +484,22 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 #if DEBUG_RESOLVER
 					ConsolePrintf("Got CAA, %s:%s\n", answers[i].CAA.tag, answers[i].CAA.value);
 #endif
+					break;
+				}
+
+				case RR_SRV: {
+					answers[i].type = RR_SRV;
+					answers[i].SRV.priority = ntohs(answer[answeroff] | answer[answeroff + 1] << 8);
+					answeroff += 2;
+
+					answers[i].SRV.weight = ntohs(answer[answeroff] | answer[answeroff + 1] << 8);
+					answeroff += 2;
+
+					answers[i].SRV.port = ntohs(answer[answeroff] | answer[answeroff + 1] << 8);
+					answeroff += 2;
+
+					answeroff += DecodeName(answer, answeroff, answers[i].SRV.target);
+
 					break;
 				}
 

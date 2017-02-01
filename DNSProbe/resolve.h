@@ -72,6 +72,14 @@ typedef struct SOARecord {
 	unsigned long	minimum;						/* TTL for zone (sec)             */
 } SOARecord;
 
+typedef struct SRVRecord {
+	unsigned int	type;
+	unsigned short	priority;
+	unsigned short	weight;
+	unsigned short	port;
+	char			target[MAXDNSNAMELENGTH + 1];
+} SRVRecord;
+
 typedef struct TXTRecord {
 	unsigned int	type;
 	unsigned char	len;
@@ -96,6 +104,7 @@ typedef union DNSRecord {
 	MXRecord		MX;
 	PTRRecord		PTR;
 	SOARecord		SOA;
+	SRVRecord		SRV;
 	TXTRecord		TXT;
 	TLSARecord		TLSA;
 } DNSRecord;
