@@ -39,6 +39,11 @@ typedef struct AAAARecord {
 	struct in6_addr	addr;							/* The address of hostname		 */	
 } AAAARecord;
 
+typedef struct CNAMERecord {
+	unsigned int	type;
+	char			name[MAXDNSNAMELENGTH + 1];		/* The hostname */
+} CNAMERecord;
+
 typedef struct NSRecord {
 	unsigned int	type;
 	char			nsdname[MAXDNSNAMELENGTH + 1];	/* The hostname */
@@ -78,6 +83,7 @@ typedef union DNSRecord {
 	unsigned int	type;
 	ARecord			A;
 	AAAARecord		AAAA;
+	CNAMERecord		CNAME;
 	NSRecord		NS;
 	MXRecord		MX;
 	PTRRecord		PTR;
@@ -105,7 +111,7 @@ typedef union DNSRecord {
 #define RR_CDNSKEY	0x003C	/* Child copy of DNSKey */
 #define RR_TLSA		0x0034	/* Transport Layer Security Protocol */
 #define RR_AXFR		0x00FC	/* Pseudo record - zone transfer */
-#define RR_CAA		0x0101	/* Certificateion Authority Restriction */
+#define RR_CAA		0x0101	/* Certification Authority Restriction */
 #define RR_TA		0x8000	/* Proposed: Trust Authority */
 #define RR_DLV		0x8001	/* Proposed: Lookaside Validation record */
 
@@ -120,6 +126,7 @@ typedef union DNSRecord {
 EXPORT int DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned long ResolverAddress);
 EXPORT BOOL InitResolver(char **resolvers, int count);
 EXPORT BOOL ShutdownResolver(void);
+EXPORT char *DNSQueryTypeToString(int type);
 
 #ifdef __cplusplus
 }

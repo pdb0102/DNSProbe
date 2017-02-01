@@ -430,6 +430,7 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 					break;
 
 				case RR_CNAME:
+#if AUTO_RESOLVE_CNAME
 					/* Instead of giving the CNAME back to the caller, we'll be nice and do the
 					 * A lookup for them. */
 					answeroff += DecodeName(answer, answeroff, answers[i].A.name);
@@ -442,6 +443,10 @@ DNSResolve(char *host, DNSRecord **list, int type, int *list_count, unsigned lon
 
 					cnamelooping = TRUE;
 					++cnameloops;
+#else
+					answers[i].type = RR_CNAME;
+					answeroff += DecodeName(answer, answeroff, answers[i].CNAME.name);
+#endif
 					break;
 
 				case RR_PTR: {
@@ -702,6 +707,34 @@ DecodeName(char *response, uint32 offset, char *name)
 	return(encodedlen);
 }
 
+char *
+DNSQueryTypeToString(int type)
+{
+	switch (type) {
+		case RR_A: return "IPv4 Address";
+		case RR_NS: return "Authoritative Name Server";
+		case RR_CNAME: return "Canonical Name (alias)";
+		case RR_SOA: return "Start of Zone Authority";
+		case RR_PTR: return "Domain Name Pointer";
+		case RR_MX: return "Mail Exchanger";
+		case RR_TXT: return "Text";
+		case RR_AAAA: return "IPv6 Address";
+		case RR_SRV: return "Service Location Record";
+		case RR_KX: return "Key Exchange Delegation";
+		case RR_DS: return "DS";
+		case RR_RRSIG: return "Signature for DNSSec Record Set";
+		case RR_NSEC: return "Next Secure Record";
+		case RR_DNSKEY: return "DNSSec Key Record ";
+		case RR_CDNSKEY: return "Child copy of DNSKey";
+		case RR_TLSA: return "Transport Layer Security Protocol";
+		case RR_AXFR: return "Pseudo record - Zone Transfer";
+		case RR_CAA: return "Certification Authority Restriction";
+		case RR_TA: return "Trust Authority";
+		case RR_DLV: return "Lookaside Validation record";
+		default:
+			return "unknown";
+	}
+}
 
 void
 AddResolver(char *ResolverValue)

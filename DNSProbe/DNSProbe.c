@@ -6,6 +6,7 @@
 #include "resolve.h"
 
 BOOL Lookup(char *value, int lookup_type);
+void DumpRecords(char *lookup, int type, DNSRecord *records, int rec_count);
 
 int Exiting;
 char **resolvers;
@@ -17,7 +18,7 @@ int main(int argc, char* argv[]) {
 
 	IPInit();
 
-	lookup_type = RR_AAAA;
+	lookup_type = RR_A;
 	resolvers = malloc(sizeof(char *) * 2);
 	resolvers[0] = "8.8.8.8";
 
@@ -25,7 +26,7 @@ int main(int argc, char* argv[]) {
 	if (argc > 1) {
 		lookupname = argv[1];
 	} else {
-		lookupname = "google.com";
+		lookupname = "venafi.com";
 	}
 	if (inet_addr(lookupname) != INADDR_NONE) {
 		lookup_type = RR_PTR;
@@ -58,37 +59,34 @@ Lookup(char *value, int lookup_type) {
 	}
 
 	printf("Resolving %s\n", value);
+	detail_name = NULL;
 	switch (status) {
 		case DNS_SUCCESS: {
-			switch (lookup_type) {
-				case RR_A: {
-					printf("IPv4 Address Record%s\n", rec_count > 1 ? "s" : "");
-					for (int i = 0; i < rec_count; i++) {
+			for (int i = 0; i < rec_count; i++) {
+				switch (lookup_type) {
+					case RR_A: {
+						printf("IPv4 Address Record\n");
 						printf("  %s: %s\n", records[i].A.name, inet_ntoa(records[i].A.addr));
+						if (detail_name == NULL) detail_name = records[i].A.name;
+						break;
 					}
-					detail_name = records[0].A.name;
-					break;
-				}
 
-				case RR_AAAA: {
-					char buf[46];
+					case RR_AAAA: {
+						char buf[46];
 
-					printf("IPv6 Address Record%s\n", rec_count > 1 ? "s" : "");
-					for (int i = 0; i < rec_count; i++) {
+						printf("IPv6 Address Record");
 						inet_ntop(AF_INET6, &records[i].AAAA.addr, buf, 46);
 						printf("  %s: %s\n", records[i].AAAA.name, buf);
+						if (detail_name == NULL) detail_name = records[i].AAAA.name;
+						break;
 					}
-					detail_name = records[0].A.name;
-					break;
-				}
 
-				case RR_PTR: {
-					printf("Name Record%s\n", rec_count > 1 ? "s" : "");
-					for (int i = 0; i < rec_count; i++) {
+					case RR_PTR: {
+						printf("Name Record");
 						printf("  %s: %s", value, records[i].PTR.name);
+						if (detail_name == NULL) detail_name = records[i].PTR.name;
+						break;
 					}
-					detail_name = records[0].PTR.name;
-					break;
 				}
 			}
 
@@ -122,6 +120,7 @@ Lookup(char *value, int lookup_type) {
 		printf("Failed to look up NS authority\n");
 		return FALSE;
 	}
+	DumpRecords(detail_name, RR_NS, records, rec_count);
 	
 	// Get the IP address of the authority
 	status = DNSResolve(records[0].NS.nsdname, &records, RR_A, &rec_count, 0);
@@ -135,45 +134,84 @@ Lookup(char *value, int lookup_type) {
 	// look up details about 'value'
 	status = DNSResolve(detail_name, &records, RR_SOA, &rec_count, authority);
 	if (status == DNS_SUCCESS) {
-		printf("Zone Authority (SOA) Record%s\n", rec_count > 1 ? "s" : "");
-		for (int i = 0; i < rec_count; i++) {
-			printf("  Primary Source : %s\n", records[i].SOA.mname);
-			printf("  Primary Contact: %s\n", records[i].SOA.rname);
-			printf("  Serial         : %u\n", records[i].SOA.serial);
-		}
+		DumpRecords(detail_name, RR_SOA, records, rec_count);
 	} else {
 		printf("No Zone Authority (SOA) Records\n");
 	}
 
+	status = DNSResolve(detail_name, &records, RR_AAAA, &rec_count, authority);
+	if (status == DNS_SUCCESS) {
+		DumpRecords(detail_name, RR_AAAA, records, rec_count);
+	} else {
+		printf("No IPv6 Records\n");
+	}
+
+	status = DNSResolve(detail_name, &records, RR_CNAME, &rec_count, authority);
+	if (status == DNS_SUCCESS) {
+		DumpRecords(detail_name, RR_CNAME, records, rec_count);
+	} else {
+		printf("No CNAME Records\n");
+	}
+
 	status = DNSResolve(detail_name, &records, RR_MX, &rec_count, authority);
 	if (status == DNS_SUCCESS) {
-		printf("Mail Exchanger Record%s\n", rec_count > 1 ? "s" : "");
-		for (int i = 0; i < rec_count; i++) {
-			printf("  Name         : %s\n", records[0].MX.name);
-			printf("  Preference   : %u\n", records[i].MX.preference);
-		}
+		DumpRecords(detail_name, RR_MX, records, rec_count);
 	} else {
 		printf("No Mail Exchanger (MX) Records\n");
 	}
 
 	status = DNSResolve(detail_name, &records, RR_TLSA, &rec_count, authority);
 	if (status == DNS_SUCCESS) {
-		printf("Transport Layer Security Protocol (TLSA) Record%s\n", rec_count > 1 ? "s" : "");
-		for (int i = 0; i < rec_count; i++) {
-			printf("  Cert Association Data : %s\n", records[0].TLSA.cert_assoc_data);
-		}
+		DumpRecords(detail_name, RR_TLSA, records, rec_count);
 	} else {
 		printf("No Transport Layer Security Protocol (TLSA) Records\n");
 	}
 
 	status = DNSResolve(detail_name, &records, RR_TXT, &rec_count, authority);
 	if (status == DNS_SUCCESS) {
-		if (rec_count == 0) {
-			printf("No TXT records\n");
-		} else {
-			printf("TXT records:%s\n", rec_count > 1 ? "s" : "");
-			for (int i = 0; i < rec_count; i++) {
-				printf("  %d: ", i);
+		DumpRecords(detail_name, RR_TXT, records, rec_count);
+	} else {
+		printf("No Text (TXT) Records\n");
+	}
+
+	return TRUE;
+}
+
+void
+DumpRecords(char *lookup, int type, DNSRecord *records, int rec_count) {
+	printf("Query '%s', type '%s':\n", lookup, DNSQueryTypeToString(type));
+
+	for (int i = 0; i < rec_count; i++) {
+		switch (records[i].type) {
+			case RR_A: {
+				printf(" IPv4 Address\n");
+				printf("  %s: %s\n", records[i].A.name, inet_ntoa(records[i].A.addr));
+				break;
+			}
+
+			case RR_AAAA: {
+				char buf[46];
+
+				printf(" IPv6 Address\n");
+				inet_ntop(AF_INET6, &records[i].AAAA.addr, buf, 46);
+				printf("  %s: %s\n", records[i].AAAA.name, buf);
+				break;
+			}
+
+			case RR_MX: {
+				printf(" Mail Exchanger\n");
+				printf("  %s: Pref %d\n", records[i].MX.name, records[i].MX.preference);
+				break;
+			}
+
+			case RR_PTR: {
+				printf(" PTR (Name from Address)\n");
+				printf("  %s", records[i].PTR.name);
+				break;
+			}
+
+			case RR_TXT: {
+				printf(" Text\n  ");
 				for (int j = 0; j < records[i].TXT.len; j++) {
 					if (isascii(records[i].TXT.data[j])) {
 						printf("%c", records[i].TXT.data[j]);
@@ -182,13 +220,36 @@ Lookup(char *value, int lookup_type) {
 					}
 				}
 				printf("\n");
+				break;
+			}
+
+			case RR_SOA: {
+				printf(" Zone Authority\n");
+				printf("  Primary Source : %s\n", records[i].SOA.mname);
+				printf("  Primary Contact: %s\n", records[i].SOA.rname);
+				printf("  Serial         : %u\n", records[i].SOA.serial);
+				break;
+			}
+
+			case RR_TLSA: {
+				printf(" Certificate Association Data\n");
+				printf("  Cert Association Data : %s\n", records[i].TLSA.cert_assoc_data);
+				break;
+			}
+
+			case RR_NS: {
+				printf(" Name Server\n");
+				printf("  NS Name: %s\n", records[i].NS.nsdname);
+				break;
+			}
+
+			case RR_CNAME: {
+				printf(" Canonical Name\n");
+				printf("  NS Name: %s\n", records[i].NS.nsdname);
+				break;
 			}
 		}
-	} else {
-		printf("No Text (TXT) Records\n");
 	}
-
-	return TRUE;
 }
 
 
